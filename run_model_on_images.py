@@ -118,8 +118,12 @@ def plot_results_csv():
     # Add more minor ticks to the x axis
     plt.minorticks_on()
     plt.grid(which='both')
+    plt.title('Azimuth angle predicted and measured for entire 10km traverse')
+    plt.xlabel('Image index')
+    plt.ylabel('Azimuth angle degs')
     # Add a legend
     plt.legend(['predicted', 'actual'])
+    plt.tight_layout()
 
     plt.figure()
     plt.plot(results['sun_f_var'])
@@ -147,15 +151,16 @@ def plot_results_csv():
 
 if __name__ == '__main__':
     # Remove the evaluation directory
-    if Path('example_dataset/evaluation/images').exists():
-        for file in Path('example_dataset/evaluation/images').glob('*'):
-            file.unlink()
-        Path('example_dataset/evaluation/images').rmdir()
-    original_image_dir = Path('/home/hugo/datasets/devon_island/grey-rectified-512x384/grey-rectified-512x384-s22/')
-    symlink_images_to_evalutation_folder(original_image_dir)
-    run_model_on_images(
-        '1_100_100.pth', 
-        Path('example_dataset/evaluation'),
-        image_size=(1, 100, 100)
-    )
+    # if Path('example_dataset/evaluation/images').exists():
+    #     for file in Path('example_dataset/evaluation/images').glob('*'):
+    #         file.unlink()
+    #     Path('example_dataset/evaluation/images').rmdir()
+    # for i in range(23):
+    #     original_image_dir = Path(f'/home/hugo/datasets/devon_island/grey-rectified-512x384/grey-rectified-512x384-s{i:02}/')
+    #     symlink_images_to_evalutation_folder(original_image_dir)
+    # run_model_on_images(
+    #     '1_100_100_baseline2.pth', 
+    #     Path('example_dataset/evaluation'),
+    #     image_size=(1, 100, 100)
+    # )
     plot_results_csv()
