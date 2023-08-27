@@ -23,7 +23,7 @@ class CNNRegression(nn.Module):
         self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2)
         self.linear_line_size = int(16*(image_size[1]//4)*(image_size[2]//4))
         self.fc1 = nn.Linear(in_features=self.linear_line_size, out_features=128)
-        self.fc2 = nn.Linear(in_features=128, out_features=2)
+        self.fc2 = nn.Linear(in_features=128, out_features=3)
 
         
     def forward(self, x):
@@ -167,8 +167,8 @@ if __name__ == '__main__':
     print(f'Using device: {device}')
 
     # Train the model
-    image_size: Tuple[int, int, int] = (3, 100, 100)
-    model = train_network(device, 20, image_size=image_size)
+    image_size: Tuple[int, int, int] = (1, 100, 100)
+    model = train_network(device, 10, image_size=image_size)
 
     # Save the model
     filename = f'{image_size[0]}_{image_size[1]}_{image_size[2]}.pth'

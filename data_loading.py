@@ -15,7 +15,7 @@ import numpy as np
 DEFAULT_IMAGE_FOLDER_PATH = Path('example_dataset/')
 
 # This script is set up to crop first, then resize
-DEFAULT_CENTRE_CROP_SIZE = 200
+DEFAULT_CENTRE_CROP_SIZE = 300
 DEFAULT_RESIZED_IMAGE_SIZE = 100
 
 
@@ -156,5 +156,5 @@ class RegressionTaskData:
 
 
 if __name__ == '__main__':
-    data = RegressionTaskData()
+    data = RegressionTaskData(grayscale=True, resize_size=100)
     data.visualise_image()
