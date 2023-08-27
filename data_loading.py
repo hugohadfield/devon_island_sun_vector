@@ -111,20 +111,31 @@ class RegressionTaskData:
     def output_image_size(self):
         return (1 if self.grayscale else 3, self.resize_size, self.resize_size)
 
+    def make_dataloader(
+            self,
+            image_folder_path: Path,
+            image_targets: Dict[str, Any],
+    ) -> torch.utils.data.DataLoader:
+        """
+        Builds a data loader that just will just run the model on the images in the image_folder_path
+        """
+        data = RegressionImageFolder(
+            str(image_folder_path), 
+            image_targets=image_targets,
+            transform=self.test_transforms
+        )
+        # This constructs the dataloader that actually determins how images will be loaded in batches
+        dataloader = torch.utils.data.DataLoader(data, batch_size=32)
+        return dataloader
+
     def make_trainloader(
             self, 
         ) -> torch.utils.data.DataLoader:
         """
         Builds the train data loader
         """
-        train_data = RegressionImageFolder(
-            str(self.image_folder_path / 'train'), 
-            image_targets=load_image_targets_from_csv(self.image_folder_path / 'train.csv'),
-            transform=self.train_transforms
-        )
-        # This constructs the dataloader that actually determins how images will be loaded in batches
-        trainloader = torch.utils.data.DataLoader(train_data, batch_size=32)
-        return trainloader
+        train_targets = load_image_targets_from_csv(self.image_folder_path / 'train.csv')
+        return self.make_dataloader(self.image_folder_path / 'train', train_targets)
 
     def make_testloader(
             self, 
@@ -132,14 +143,8 @@ class RegressionTaskData:
         """
         Builds the test data loader
         """
-        test_data = RegressionImageFolder(
-            str(self.image_folder_path / 'test'), 
-            image_targets=load_image_targets_from_csv(self.image_folder_path / 'test.csv'),
-            transform=self.test_transforms
-        )
-        # This constructs the dataloader that actually determins how images will be loaded in batches
-        testloader = torch.utils.data.DataLoader(test_data, batch_size=32)
-        return testloader
+        test_targets = load_image_targets_from_csv(self.image_folder_path / 'test.csv')
+        return self.make_dataloader(self.image_folder_path / 'test', test_targets)
 
     def visualise_image(self):
         """

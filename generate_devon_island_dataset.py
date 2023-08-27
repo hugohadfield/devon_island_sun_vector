@@ -14,6 +14,9 @@ from sklearn.model_selection import train_test_split
 
 
 def with_sun_as_unit_vector_in_flu(data: pd.DataFrame):
+    """
+    Turns the sun azimuth and zenith angles into a unit vector in the FLU coordinate system
+    """
     sin_zen = np.sin(np.deg2rad(data['zen_deg']))
     cos_zen = np.cos(np.deg2rad(data['zen_deg']))
     cos_az = np.cos(np.deg2rad(data['az_deg']))
@@ -48,6 +51,9 @@ def generate_image_name(image_base_dir: str, image_index: int, left=True):
 
 
 def get_max_min_index(image_names):
+    """
+    Gets the min and max index from a list of image names
+    """
     max_index = 0
     min_index = 100000000
     for image_name in image_names:
@@ -292,15 +298,15 @@ def check_for_duplicate_image_names():
 
 
 if __name__ == '__main__':
-    generate_enriched_sun_data()
+    # generate_enriched_sun_data()
     # copy_sampled_data()
-    update_image_names_to_sampled()
+    # update_image_names_to_sampled()
     # copy_sampled_with_flip()
-    generate_flipped_sun_sensor_csv()
-    combine_with_flipped_data()
-    analyse_dataset_balance()
-    analyse_dataset_balance('example_dataset/enriched_data/sun-sensor-sampled-combined.csv')
-    balance_dataset_by_azimuth_angle(n_bins=36)
-    analyse_dataset_balance('example_dataset/enriched_data/sampled_balanced.csv')
+    # generate_flipped_sun_sensor_csv()
+    # combine_with_flipped_data()
+    # analyse_dataset_balance()
+    # analyse_dataset_balance('example_dataset/enriched_data/sun-sensor-sampled-combined.csv')
+    # balance_dataset_by_azimuth_angle(n_bins=36)
+    # analyse_dataset_balance('example_dataset/enriched_data/sampled_balanced.csv')
     generate_train_and_test_data()
     # check_for_duplicate_image_names()

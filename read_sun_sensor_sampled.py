@@ -17,9 +17,12 @@ def with_sun_as_unit_vector_in_flu(data: pd.DataFrame):
 if __name__ == '__main__':
     data = pd.read_csv('example_dataset/raw_data/sun-sensor-sampled.txt', sep="\s+|\t+|\s+\t+|\t+\s+", header=None, names=['image_ind', 'az', 'zen', 'time_offset_s'])
     with_sun_as_unit_vector_in_flu(data)
+
+    data = data[data['image_ind'] <= 2087]
+
     print(data)
 
-    plt.plot(data['az'])
+    plt.plot(data['image_ind'], np.rad2deg(np.arctan2(data['sun_f'], data['sun_l'])))
     # plt.plot(data['sun_l'])
     # plt.plot(data['sun_u'])
     # plt.hist(data['az'], bins=100)
