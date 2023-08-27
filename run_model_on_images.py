@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import torch
-from network import load_model, RegressionTaskData
+from network import load_model, RegressionTaskData, calculate_angles_between_sun_vectors
 from generate_devon_island_dataset import (
     get_image_names, extract_image_index, get_max_min_index, with_sun_as_unit_vector_in_flu
 )
@@ -21,7 +21,6 @@ def path_target_generator(image_dir: Path):
     This function returns a map that is back to the image path
     """
     image_names = get_image_names(image_dir)
-    print(image_names)
     return {image_name: image_name for image_name in image_names}
 
 
@@ -40,6 +39,7 @@ def run_model_on_images(model_name: Path, image_dir: Path, image_size: Tuple[int
 
     # First we load the model
     model = load_model(image_size=image_size, filename=model_name)
+    # model.eval()
 
     # We need to move the model to the GPU
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -54,12 +54,22 @@ def run_model_on_images(model_name: Path, image_dir: Path, image_size: Tuple[int
     with torch.no_grad():
         evaluation_loader = regression_task.make_dataloader(image_dir, path_target_generator(image_dir / 'images'))
         for inputs, image_path_batch in tqdm.tqdm(evaluation_loader):
-            outputs = model(inputs.to(device))
-            outputs_np = outputs.cpu().numpy()
+
+            n_mc_evals = 20
+            output_totals = np.zeros((len(inputs), 3))
+            outputs_vars = np.zeros((len(inputs), 3))
+            for i in range(n_mc_evals):
+                outputs = model(inputs.to(device))
+                outputs_np = outputs.detach().cpu().numpy()
+                output_totals += outputs_np
+                outputs_vars += outputs_np**2
+            outputs_mean = output_totals/(1 + n_mc_evals)
+            outputs_vars = outputs_vars/(1 + n_mc_evals) - outputs_mean**2
+
             # Store the result of this batch in a csv file and each of the image names
             with open('results.csv', 'a') as f:
-                for output, image_name in zip(outputs_np, image_path_batch):
-                    f.write(f'{image_name},{output[0]},{output[1]},{output[2]}\n')
+                for op_mu, op_var, image_name in zip(outputs_mean, outputs_vars, image_path_batch):
+                    f.write(f'{image_name},{op_mu[0]},{op_mu[1]},{op_mu[2]},{op_var[0]},{op_var[1]},{op_var[2]}\n')
 
 
 def symlink_images_to_evalutation_folder(image_dir: Path):
@@ -87,7 +97,7 @@ def plot_results_csv():
     """
     This function plots the results csv file
     """
-    results = pd.read_csv('results.csv', header=None, names=['image_name', 'sun_f', 'sun_l', 'sun_u'])
+    results = pd.read_csv('results.csv', header=None, names=['image_name', 'sun_f', 'sun_l', 'sun_u', 'sun_f_var', 'sun_l_var', 'sun_u_var'])
     results['image_ind'] = results['image_name'].apply(extract_image_index)
     results = results.set_index('image_ind')
     results = results.sort_index()
@@ -107,8 +117,29 @@ def plot_results_csv():
     plt.plot(sv_data['image_ind'], np.rad2deg(np.arctan2(sv_data['sun_f'], sv_data['sun_l'])))
     # Add more minor ticks to the x axis
     plt.minorticks_on()
+    plt.grid(which='both')
     # Add a legend
     plt.legend(['predicted', 'actual'])
+
+    plt.figure()
+    plt.plot(results['sun_f_var'])
+    plt.plot(results['sun_l_var'])
+    # plt.plot(results['sun_u_var'])
+    plt.legend(['sun_f_var', 'sun_l_var'])
+    plt.minorticks_on()
+    plt.grid(which='both')
+
+    plt.figure()
+    plt.plot(np.sqrt(results['sun_f']**2 + results['sun_l']**2 + results['sun_u']**2))
+    plt.title('Norm of sun vector')
+    plt.minorticks_on()
+    plt.grid(which='both')
+
+    plt.figure()
+    plt.plot(results['sun_f_var'] + results['sun_l_var'])
+    plt.title('Approx angle var')
+    plt.minorticks_on()
+    plt.grid(which='both')
     plt.show()
 
 

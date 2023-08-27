@@ -10,8 +10,18 @@ from torch.utils.tensorboard import SummaryWriter
 from data_loading import RegressionTaskData
 
 
-class CNNRegression(nn.Module):
+def calculate_angles_between_sun_vectors(sun_f_a, sun_l_a, sun_f_b, sun_l_b):
     """
+    This function calculates the angle between two sun vectors
+    """
+    norm_a = np.sqrt(sun_f_a*sun_f_a + sun_l_a*sun_l_a  + 1e-6) 
+    norm_b = np.sqrt(sun_f_b*sun_f_b + sun_l_b*sun_l_b + 1e-6)
+    dot_prod = sun_f_a*sun_f_b/(norm_a*norm_b) + sun_l_a*sun_l_b/(norm_a*norm_b)
+    return np.rad2deg(np.arccos(dot_prod))
+
+
+class CNNRegression(nn.Module):
+    """ 
     This will be the very basic CNN model we will use for the regression task.
     """
     def __init__(self, image_size: Tuple[int, int, int] = (3, 100, 100)):
@@ -25,6 +35,11 @@ class CNNRegression(nn.Module):
         self.fc1 = nn.Linear(in_features=self.linear_line_size, out_features=128)
         self.fc2 = nn.Linear(in_features=128, out_features=3)
 
+        self.dropout1 = nn.Dropout(0.2)
+        self.dropout2 = nn.Dropout(0.2)
+        self.dropout3 = nn.Dropout(0.2)
+        
+        self.batchnorm1 = nn.BatchNorm2d(4)
         
     def forward(self, x):
         """
@@ -37,13 +52,16 @@ class CNNRegression(nn.Module):
         x = self.conv1(x)
         # print('Size of tensor after each layer')
         # print(f'conv1 {x.size()}')
+        # x = self.batchnorm1(x)
         x = nn.functional.relu(x)
+        x = self.dropout1(x)
         # print(f'relu1 {x.size()}')
         x = self.pool1(x)
         # print(f'pool1 {x.size()}')
         x = self.conv2(x)
         # print(f'conv2 {x.size()}')
         x = nn.functional.relu(x)
+        x = self.dropout2(x)
         # print(f'relu2 {x.size()}')
         x = self.pool2(x)
         # print(f'pool2 {x.size()}')
@@ -52,6 +70,7 @@ class CNNRegression(nn.Module):
         x = self.fc1(x)
         # print(f'fc1 {x.size()}')
         x = nn.functional.relu(x)
+        x = self.dropout3(x)
         # print(f'relu2 {x.size()}')
         x = self.fc2(x)
         # print(f'fc2 {x.size()}')
@@ -94,9 +113,14 @@ def train_network(device, n_epochs: int = 10, image_size: Tuple[int, int, int] =
 
             writer.add_scalar('Train Loss', loss.item(), i)
 
+            outputs_np = outputs.detach().cpu().numpy()
+            targets_np = targets.detach().cpu().numpy()
+            output_angles = [calculate_angles_between_sun_vectors(out[0], out[1], t[0], t[1]) for out, t in zip(outputs_np, targets_np)]
+            angle_error = np.sum(output_angles)/len(output_angles)
+
             # Print training statistics
             if (i + 1) % 10 == 0:
-                print(f'Epoch [{epoch + 1}/{n_epochs}], Step [{i + 1}/{len(regression_task.trainloader)}], Loss: {loss.item():.4f}')
+                print(f'Epoch [{epoch + 1}/{n_epochs}], Step [{i + 1}/{len(regression_task.trainloader)}], Loss: {loss.item():.4f} Angle Error: {angle_error:.4f} degrees')
     writer.close()
 
     return model
@@ -131,6 +155,8 @@ def evaluate_network(model, device, image_size: Tuple[int, int, int] = (3, 100, 
     regression_task = RegressionTaskData(grayscale=grayscale, resize_size=resize_size)
     criterion = nn.MSELoss()
 
+    model.eval()
+
     # Evaluate the model on the test data
     with torch.no_grad():
         total_loss = 0
@@ -146,12 +172,8 @@ def evaluate_network(model, device, image_size: Tuple[int, int, int] = (3, 100, 
             # which is probably more meaningful to humans that the MSE loss
             outputs_np = outputs.cpu().numpy()
             targets_np = targets.cpu().numpy()
-            output_angles = np.array([np.arctan2(out[0], out[1]) for out in outputs_np])
-            target_angles = np.array([np.arctan2(t[0], t[1]) for t in targets_np])
-            # This is probably not a great way to calculate the angle error 
-            # as it doesn't take into account the fact that angles wrap around
-            # but it seems to work well enough for now
-            angle_error = np.sum(np.abs(np.rad2deg(target_angles - output_angles)))
+            output_angles = [calculate_angles_between_sun_vectors(out[0], out[1], t[0], t[1]) for out, t in zip(outputs_np, targets_np)]
+            angle_error = np.sum(output_angles)
             total_angle_error += angle_error
             n_samples_total += len(output_angles)
 
@@ -161,14 +183,13 @@ def evaluate_network(model, device, image_size: Tuple[int, int, int] = (3, 100, 
         print(f'Test mean angle error: {mean_angle_error:.4f} degrees')
 
 
-
 if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f'Using device: {device}')
 
     # Train the model
     image_size: Tuple[int, int, int] = (1, 100, 100)
-    model = train_network(device, 10, image_size=image_size)
+    model = train_network(device, 30, image_size=image_size)
 
     # Save the model
     filename = f'{image_size[0]}_{image_size[1]}_{image_size[2]}.pth'
